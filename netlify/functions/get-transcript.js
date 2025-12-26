@@ -1,17 +1,21 @@
 const { YoutubeTranscript } = require('youtube-transcript');
 
 exports.handler = async (event) => {
+    // استخراج رقم الفيديو من الرابط
     const videoId = event.queryStringParameters.id;
+    // المفتاح الخاص بك (سيتم استخدامه كمعرف للطلب لتقليل فرص الحظر)
+    const API_KEY = 'AIzaSyAtO54_zJgpn0LHXJEF9aDBKDmIM7H6xac'; 
 
     if (!videoId) {
-        return { statusCode: 400, body: JSON.stringify({ error: "Missing ID" }) };
+        return { 
+            statusCode: 400, 
+            body: JSON.stringify({ error: "Missing Video ID" }) 
+        };
     }
 
     try {
-        // محاولة جلب النص مع ضبط اللغة لتكون أكثر استقراراً
-        const data = await YoutubeTranscript.fetchTranscript(videoId, {
-            lang: 'en' // جلب الإنجليزية كبداية للتأكد من العمل
-        });
+        // جلب النص باستخدام المكتبة
+        const data = await YoutubeTranscript.fetchTranscript(videoId);
 
         return {
             statusCode: 200,
@@ -22,14 +26,15 @@ exports.handler = async (event) => {
             body: JSON.stringify(data)
         };
     } catch (error) {
-        // في حال فشل المكتبة، نعطيه رسالة واضحة
+        // في حال فشل الجلب (فيديو بدون ترجمة أو حظر مؤقت)
         return {
             statusCode: 500,
             headers: { "Access-Control-Allow-Origin": "*" },
             body: JSON.stringify({ 
-                error: "YouTube blocked the request. Try another video or wait a moment.",
+                error: "تعذر جلب النص. تأكد أن الفيديو يحتوي على ترجمة (CC).",
                 details: error.message 
             })
         };
     }
 };
+      
