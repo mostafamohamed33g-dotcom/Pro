@@ -2,21 +2,20 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>مشغل يوتيوب ذكي - Netlify</title>
+    <title>مشغل يوتيوب ذكي - النسخة النهائية</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #1a1a1a; color: white; padding: 20px; }
-        #video-container { margin: 20px auto; border: 5px solid #333; display: inline-block; line-height: 0; }
+        body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #1a1a1a; color: white; padding: 20px; }
+        #video-container { margin: 20px auto; border: 5px solid #333; display: inline-block; }
         #transcript-box { 
-            width: 80%; max-width: 700px; margin: 20px auto; padding: 30px;
-            background: #222; border-radius: 15px; border: 1px solid #444;
-            min-height: 80px; font-size: 1.5rem; color: #00ffcc;
+            width: 80%; max-width: 700px; margin: 20px auto; padding: 25px; 
+            background: #222; border-radius: 15px; border: 1px solid #444; 
+            min-height: 60px; font-size: 1.4rem; color: #00ffcc; line-height: 1.6;
         }
-        input { padding: 12px; width: 350px; border-radius: 5px; border: none; }
-        button { padding: 12px 25px; cursor: pointer; background: #ff0000; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        input { padding: 12px; width: 300px; border-radius: 5px; border: none; }
+        button { padding: 12px 20px; cursor: pointer; background: #ff0000; color: white; border: none; border-radius: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
-
     <h1>مشغل الفيديو والنص المتزامن</h1>
     <input type="text" id="videoUrl" placeholder="ضع رابط اليوتيوب هنا...">
     <button onclick="loadContent()">تحميل وتشغيل</button>
@@ -34,10 +33,9 @@
             const videoId = extractId(url);
             if(!videoId) return alert("رابط غير صحيح");
 
-            document.getElementById('current-text').innerText = "جاري جلب النص من Netlify Functions...";
+            document.getElementById('current-text').innerText = "جاري جلب النص...";
 
             try {
-                // الاتصال بخدمة Netlify Function في نفس النطاق
                 const response = await fetch(`/.netlify/functions/get-transcript?id=${videoId}`);
                 transcriptData = await response.json();
 
@@ -50,7 +48,7 @@
                     });
                 }
             } catch (err) {
-                document.getElementById('current-text').innerText = "خطأ في جلب النص. تأكد أن الفيديو يحتوي على ترجمة.";
+                document.getElementById('current-text').innerText = "خطأ: تأكد أن الفيديو يحتوي على ترجمة (CC).";
             }
         }
 
@@ -68,13 +66,14 @@
 
         function updateTranscript() {
             if (!player || !transcriptData.length) return;
-            const currentTime = player.getCurrentTime() * 1000; // تحويل للثواني إذا لزم الأمر حسب المكتبة
+            const currentTime = player.getCurrentTime(); 
             
-            // البحث عن النص المناسب (تعديل بسيط حسب مخرجات المكتبة الجديدة)
-            const active = transcriptData.find(item => (currentTime >= item.offset && currentTime <= (item.offset + item.duration)));
+            const active = transcriptData.find(item => 
+                (currentTime >= (item.offset / 1000) && currentTime <= ((item.offset + item.duration) / 1000))
+            );
             
             if (active) {
-                document.getElementById('current-text').innerText = decodeURIComponent(active.text);
+                document.getElementById('current-text').innerHTML = active.text;
             }
         }
     </script>
