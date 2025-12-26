@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>مشغل يوتيوب ذكي - النسخة النهائية</title>
+    <title>مشغل يوتيوب الذكي - النسخة المستقرة</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #1a1a1a; color: white; padding: 20px; }
         #video-container { margin: 20px auto; border: 5px solid #333; display: inline-block; }
@@ -36,8 +36,29 @@
             document.getElementById('current-text').innerText = "جاري جلب النص...";
 
             try {
-                const response = await fetch(`/.netlify/functions/get-transcript?id=${videoId}`);
-                transcriptData = await response.json();
+                // المحاولة الأولى: جلب النص عبر Netlify Function
+                let response = await fetch(`/.netlify/functions/get-transcript?id=${videoId}`);
+                let data = await response.json();
+
+                if (data.error) {
+                    // المحاولة الثانية: الخطة البديلة (جلب مباشر من المتصفح)
+                    console.log("Server blocked, trying fallback...");
+                    const altRes = await fetch(`https://video.google.com/timedtext?lang=en&v=${videoId}`);
+                    const xmlText = await altRes.text();
+                    
+                    if (!xmlText) throw new Error("No transcript available");
+                    
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+                    const lines = xmlDoc.getElementsByTagName("text");
+                    transcriptData = Array.from(lines).map(line => ({
+                        text: line.textContent,
+                        offset: parseFloat(line.getAttribute("start")) * 1000,
+                        duration: parseFloat(line.getAttribute("dur")) * 1000
+                    }));
+                } else {
+                    transcriptData = data;
+                }
 
                 if (player) {
                     player.loadVideoById(videoId);
@@ -48,7 +69,7 @@
                     });
                 }
             } catch (err) {
-                document.getElementById('current-text').innerText = "خطأ: تأكد أن الفيديو يحتوي على ترجمة (CC).";
+                document.getElementById('current-text').innerText = "عذراً، لم نتمكن من جلب نص لهذا الفيديو. تأكد من وجود ترجمة (CC).";
             }
         }
 
@@ -66,10 +87,10 @@
 
         function updateTranscript() {
             if (!player || !transcriptData.length) return;
-            const currentTime = player.getCurrentTime(); 
+            const currentTime = player.getCurrentTime() * 1000; 
             
             const active = transcriptData.find(item => 
-                (currentTime >= (item.offset / 1000) && currentTime <= ((item.offset + item.duration) / 1000))
+                (currentTime >= item.offset && currentTime <= (item.offset + item.duration))
             );
             
             if (active) {
